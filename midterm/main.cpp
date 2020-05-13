@@ -1,82 +1,3 @@
-/*
-
-#include "mbed.h"
-#include <cmath>
-#include "DA7212.h"
-
-DA7212 audio;
-int16_t waveform[kAudioTxBufferSize];
-InterruptIn sw2(SW2);
-InterruptIn sw3(SW3);
-EventQueue queue(32 * EVENTS_EVENT_SIZE);
-Thread t;
-int idC[32];
-int indexC = 0;
-DigitalOut green_led(LED2);
-
-
-
-int song[42] = {
-    261, 261, 392, 392, 440, 440, 392,
-    349, 349, 330, 330, 294, 294, 261,
-    392, 392, 349, 349, 330, 330, 294,
-    392, 392, 349, 349, 330, 330, 294,
-    261, 261, 392, 392, 440, 440, 392,
-    349, 349, 330, 330, 294, 294, 261};
-
-int noteLength[42] = {
-    1, 1, 1, 1, 1, 1, 2,
-    1, 1, 1, 1, 1, 1, 2,
-    1, 1, 1, 1, 1, 1, 2,
-    1, 1, 1, 1, 1, 1, 2,
-    1, 1, 1, 1, 1, 1, 2,
-    1, 1, 1, 1, 1, 1, 2};
-
-
-void playNote(int freq)
-{
-    for (int i = 0; i < kAudioTxBufferSize; i++) {
-        waveform[i] = (int16_t) (sin((double)i * 2. * M_PI/(double) (kAudioSampleFrequency / freq)) * ((1<<16) - 1));
-    }
-    // the loop below will play the note for the duration of 1s
-    for(int j = 0; j < kAudioSampleFrequency / kAudioTxBufferSize; ++j) {
-        audio.spk.play(waveform, kAudioTxBufferSize);
-    }
-}
-void playNoteC(void)
-{
-    idC[indexC++] = queue.call_every(1, playNote, 261);
-    indexC %= 32;
-}
-void stopPlayNoteC(void)
-{
-    for (auto &i : idC) {
-        queue.cancel(i);
-    }
-}
-
-
-void playNoteC(void)
-{
-    for (int i = 0; i < 42; i++) {
-        int length = noteLength[i];
-        while (length--) {
-            queue.call(playNote, song[i]);
-            if (length <= 1) wait(1.0);
-        }
-    }
-}
-
-int main(void)
-{
-    t.start(callback(&queue, &EventQueue::dispatch_forever));
-    sw2.fall(queue.event(playNoteC));
-    sw3.fall(queue.event(stopPlayNoteC));
-}
-
-*/
-
-
 #include "mbed.h"
 #include "uLCD_4DGL.h"
 #include <cmath>
@@ -95,14 +16,7 @@ int indexC = 0;
 EventQueue playQ(32 * EVENTS_EVENT_SIZE);
 DigitalOut green_led(LED2);
 
-int taiko[42] = {
-    1, 1, 1, 1, 1, 1, 2,
-    1, 1, 1, 1, 1, 1, 2,
-    1, 1, 1, 1, 1, 1, 2,
-    1, 1, 1, 1, 1, 1, 2,
-    1, 1, 1, 1, 1, 1, 2,
-    1, 1, 1, 1, 1, 1, 2};
-
+int taiko;
 int noteLength[42];
 Thread DNN;
 Thread MODE;
@@ -503,6 +417,7 @@ void loadTaiko(void)
     wait(0.9);
     for (int i = 0; i < 42 && !stop; i++) {
         int length = noteLength[i];
+        taiko = noteLength[i];
         while (length--) {
             for (int j = 0; j < kAudioSampleFrequency / kAudioTxBufferSize; ++j) {
                 playQ.call(playNote, sig[i]);
@@ -608,8 +523,10 @@ void dnn(void)
                     item = 1;
                 uLCD_display();
             }
-            else {
-                if (gesture_index)
+            else { //taiko mode
+                if (taiko == 1 && gesture_index)
+                    score += 5;
+                else if (taiko == 2 && !gesture_index)
                     score += 5;
             }
         }
